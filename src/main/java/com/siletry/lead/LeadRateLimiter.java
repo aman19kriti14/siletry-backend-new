@@ -1,6 +1,7 @@
 package com.siletry.lead;
 
 import com.siletry.ops.OpsProperties;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -25,6 +26,7 @@ public class LeadRateLimiter {
     private final long windowMs;
     private final Clock clock;
 
+    @Autowired
     public LeadRateLimiter(OpsProperties props) {
         this(props.leads().rateLimitMax(), props.leads().rateLimitWindow().toMillis(), Clock.systemUTC());
     }
