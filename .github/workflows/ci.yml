@@ -55,7 +55,9 @@ jobs:
         run: |
           {
             echo "### Build errors"
-            grep -E '^\[ERROR\]' build.log | grep -v -E 'Help 1|re-run|full stack|For more information|^\[ERROR\] *$|-> \[Help' | head -40
+            grep -E '^\[ERROR\]' build.log | grep -v -E 'Help 1|re-run|full stack|For more information|^\[ERROR\] *$|-> \[Help|WebMergedContextConfiguration' | cut -c1-300 | head -30
+            echo "### Root causes"
+            grep -h -E 'Caused by:|APPLICATION FAILED TO START|^Description:|^Action:' -A3 build.log target/surefire-reports/*.xml 2>/dev/null | cut -c1-400 | awk '!seen[$0]++' | tail -40
             for f in target/surefire-reports/*.txt; do
               [ -f "$f" ] || continue
               if grep -qE 'FAILURE|ERROR' "$f"; then echo "### $(basename "$f")"; head -60 "$f"; fi
