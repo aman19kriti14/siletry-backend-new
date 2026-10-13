@@ -36,6 +36,41 @@ Turn seeding off with `SEED_DEMO=false`.
    ```
 4. Deploy. Health check: `GET /actuator/health`.
 
+## Demo leads from siletry.com
+
+The "Book a demo" form on the website posts to `POST /api/public/leads`. Each lead is saved in the
+`leads` table first, then a WhatsApp alert goes to the team through Meta's Cloud API. If Meta fails,
+a background job retries with backoff (1, 2, 4… minutes, up to 6 attempts), and a lead can never be
+alerted twice. Alerts are independent of `WHATSAPP_PROVIDER`, so clinic messaging can stay on `mock`.
+
+Protection on the public endpoint: validation with readable errors, a honeypot field, a per-visitor
+rate limit (5 per 10 minutes), and duplicate merging (same number within 24 hours bumps a counter
+instead of creating a row and re-alerting). Visitor IPs are stored only as salted SHA-256 hashes.
+
+Variables (backend service):
+```
+ALLOWED_ORIGINS=...,https://siletry.com,https://www.siletry.com
+OPS_WA_PHONE_NUMBER_ID=<Phone number ID from Meta → WhatsApp → API Setup>
+OPS_WA_ACCESS_TOKEN=<permanent System User token with whatsapp_business_messaging>
+OPS_WA_NOTIFY_TO=918228968530            # comma-separated for several people
+OPS_WA_LEAD_TEMPLATE=                    # empty = plain text (needs a message from you in the last 24h)
+OPS_API_KEY=<random string, 24+ chars>   # for the ops endpoints below
+LEADS_IP_SALT=<random string>
+```
+
+Plain-text mode only reaches you if the alert number has messaged the business number in the last
+24 hours. For delivery any time, approve a Utility template named `new_demo_lead` with body
+`💬 New Demo Request\n\nName: {{1}}\nWhatsApp: {{2}}\nCity: {{3}}\nClinic: {{4}}\n\nContact them within a few hours to book their demo.`
+and set `OPS_WA_LEAD_TEMPLATE=new_demo_lead`.
+
+Ops endpoints (header `X-Ops-Key: $OPS_API_KEY`):
+```
+GET   /api/ops/leads?status=NEW&page=0&size=50
+PATCH /api/ops/leads/{id}          {"status":"CONTACTED","note":"Demo on Friday"}
+POST  /api/ops/leads/{id}/notify   re-send the alert
+```
+Statuses: NEW, CONTACTED, DEMO_SCHEDULED, CONVERTED, NOT_INTERESTED, SPAM.
+
 ## Before the first real clinic
 
 - **Switch to Flyway.** `ddl-auto=update` only adds tables and columns. It never renames, drops or migrates data. Generate a baseline from the current schema, add Flyway, set `ddl-auto=validate`.

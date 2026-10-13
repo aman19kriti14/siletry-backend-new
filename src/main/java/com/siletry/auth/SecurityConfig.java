@@ -43,6 +43,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/signup", "/api/auth/login").permitAll()
                         .requestMatchers("/api/webhooks/**").permitAll()
+                        // Website demo form (rate-limited) and team ops API (guarded by OPS_API_KEY in the controller)
+                        .requestMatchers(HttpMethod.POST, "/api/public/leads").permitAll()
+                        .requestMatchers("/api/ops/**").permitAll()
                         .requestMatchers("/actuator/health", "/").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
